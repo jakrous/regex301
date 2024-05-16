@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import RegexForm from './RegexForm';
 import Results from './Results';
@@ -75,8 +75,7 @@ flag_str = '''${flagStr}'''
 test(pattern, test_string, flag_str)
       `;
             await pyodide.loadPackagesFromImports(code);
-            const result = await pyodide.runPythonAsync(code);
-            return result;
+            return await pyodide.runPythonAsync(code);
         } catch (e) {
             return 'Invalid regular expression';
         }
