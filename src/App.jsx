@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import RegexForm from './RegexForm';
+import Results from './Results';
 
 function App() {
     const [pyodide, setPyodide] = useState(null);
@@ -29,9 +31,9 @@ function App() {
         try {
             let matches;
             if (engine === 'python') {
-                matches = await testRegexPython(regex, testString);
+                matches = await testRegexPython(regex, testString, flags);
             } else {
-                matches = testRegexJava(regex, testString);
+                matches = testRegexJava(regex, testString, flags);
             }
             setResults(matches);
         } catch (e) {
@@ -39,13 +41,13 @@ function App() {
         }
     };
 
-    const testRegexPython = async (regex, input, flags) => {
+    const testRegexPython = async (pattern, testString, flags) => {
         try {
+            const flagStr = Object.keys(flags).filter(flag => flags[flag].checked).join('');
             const code = `
 import re
 
-
-def test(regex, input, flags=''):
+def test(pattern, test_string, flag_str):
     flag_dict = {
         'a': re.ASCII,
         'i': re.IGNORECASE,
@@ -55,30 +57,36 @@ def test(regex, input, flags=''):
         'u': re.UNICODE,
         'x': re.VERBOSE,
     }
-
     combined_flags = 0
-    for flag in flags:
-        if flag in flag_dict:
-            combined_flags |= flag_dict[flag]
+    for flag in flag_str:
+        combined_flags |= flag_dict[flag]
 
-    regex = re.compile(regex, combined_flags)
-    return bool(regex.search(input))
+    try:
+        regex = re.compile(pattern, combined_flags)
+        matches = regex.findall(test_string)
+        return bool(regex.search(test_string))
+    except re.error as e:
+        return f"Invalid regular expression: {e}"
 
+pattern = r'''${pattern}'''
+test_string = '''${testString}'''
+flag_str = '''${flagStr}'''
 
-test('''${regex}''', '''${input}''', flags='''${flags}''')
-            `;
-
+test(pattern, test_string, flag_str)
+      `;
             await pyodide.loadPackagesFromImports(code);
-            return await pyodide.runPythonAsync(code);
+            const result = await pyodide.runPythonAsync(code);
+            return result;
         } catch (e) {
-
+            return 'Invalid regular expression';
         }
-    }
+    };
 
-    const testRegexJava = (pattern, testString) => {
+    const testRegexJava = (pattern, testString, flags) => {
         // Mock function to simulate Java regex matching
         try {
-            const re = new RegExp(pattern);
+            const flagStr = Object.keys(flags).filter(flag => flags[flag].checked).join('');
+            const re = new RegExp(pattern, flagStr);
             return testString.match(re);
         } catch (e) {
             return 'Invalid regular expression';
@@ -96,64 +104,18 @@ test('''${regex}''', '''${input}''', flags='''${flags}''')
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
             <h1 className="text-2xl font-bold mb-4">Regex Tester</h1>
-            <div className="w-full max-w-lg bg-white p-6 rounded shadow-md">
-                <div className="mb-4">
-                    <label className="block text-gray-700 font-medium">Regex Engine</label>
-                    <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={engine}
-                        onChange={(e) => setEngine(e.target.value)}
-                    >
-                        <option value="python">Python</option>
-                        <option value="java">Java</option>
-                    </select>
-                </div>
-                <div className="mb-4">
-                    <label className="block text-gray-700 font-medium">Regular Expression</label>
-                    <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={regex}
-                        onChange={(e) => setRegex(e.target.value)}
-                    />
-                </div>
-                <div className="mb-4">
-                    <label className="block text-gray-700 font-medium">Test String</label>
-                    <textarea
-                        className="w-full px-3 py-2 border border-gray-300 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={testString}
-                        onChange={(e) => setTestString(e.target.value)}
-                    />
-                </div>
-                <div className="mb-4">
-                    <label className="block text-gray-700 font-medium">Flags</label>
-                    <div className="flex flex-col gap-2 mt-2">
-                        {Object.keys(flags).map(flag => (
-                            <label key={flag} className="inline-flex items-center">
-                                <input
-                                    type="checkbox"
-                                    name={flag}
-                                    checked={flags[flag].checked}
-                                    onChange={handleFlagChange}
-                                    className="form-checkbox h-5 w-5 text-blue-600"
-                                />
-                                <span className="ml-2 text-gray-700">{flags[flag].description}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-                <button
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    onClick={handleTest}
-                >
-                    Test
-                </button>
-                <div className="mt-4">
-                    <h2 className="text-xl font-bold">Results</h2>
-                    <pre
-                        className="bg-gray-200 p-4 rounded mt-2">{results ? JSON.stringify(results, null, 2) : "No matches found."}</pre>
-                </div>
-            </div>
+            <RegexForm
+                engine={engine}
+                setEngine={setEngine}
+                regex={regex}
+                setRegex={setRegex}
+                testString={testString}
+                setTestString={setTestString}
+                flags={flags}
+                handleFlagChange={handleFlagChange}
+                handleTest={handleTest}
+            />
+            <Results results={results} />
         </div>
     );
 }
