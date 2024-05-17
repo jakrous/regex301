@@ -8,4 +8,4 @@ COPY dist /usr/share/nginx/html
 # COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose port 80
-EXPOSE 8080
+EXPOSE 80
